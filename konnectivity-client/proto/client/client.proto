@@ -57,6 +57,9 @@ message DialRequest {
 
     // random id for client, maybe should be longer
     int64 random = 3;
+    
+    // if need tls
+    bool isTLS = 4;
 }
 
 message DialResponse {

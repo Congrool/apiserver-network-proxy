@@ -18,6 +18,7 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -363,6 +364,12 @@ func (a *Client) Serve() {
 
 			start := time.Now()
 			conn, err := net.Dial(dialReq.Protocol, dialReq.Address)
+			if dialReq.IsTLS {
+				if conn, err = a.toTLS(conn, a.cs.cert); err != nil {
+					klog.Errorf("failed to create tls conn to %s for %s", dialReq.Address, err)
+					continue
+				}
+			}
 			if err != nil {
 				klog.ErrorS(err, "could not dial", "protocol", dialReq.Protocol, "address", dialReq.Address)
 				resp.GetDialResponse().Error = err.Error()
@@ -522,4 +529,15 @@ func (a *Client) probe() {
 		a.cs.RemoveClient(a.serverID)
 		return
 	}
+}
+
+func (a *Client) toTLS(conn net.Conn, cert *tls.Config) (net.Conn, error) {
+	if cert == nil {
+		return conn, fmt.Errorf("nil cert")
+	}
+	tlsConn := tls.Client(conn, cert)
+	if err := tlsConn.Handshake(); err != nil {
+		return conn, err
+	}
+	return tlsConn, nil
 }

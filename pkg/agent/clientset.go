@@ -17,6 +17,7 @@ limitations under the License.
 package agent
 
 import (
+	"crypto/tls"
 	"fmt"
 	"sync"
 	"time"
@@ -51,6 +52,10 @@ type ClientSet struct {
 
 	agentIdentifiers string // The identifiers of the agent, which will be used
 	// by the server when choosing agent
+
+	// cert contains certificate which is used to create tls connection to
+	// the target requested by DAIL_REQ
+	cert *tls.Config
 }
 
 func (cs *ClientSet) ClientsCount() int {
@@ -115,6 +120,7 @@ type ClientSetConfig struct {
 	SyncInterval            time.Duration
 	ProbeInterval           time.Duration
 	DialOptions             []grpc.DialOption
+	Cert                    *tls.Config
 	ServiceAccountTokenPath string
 }
 
@@ -128,6 +134,7 @@ func (cc *ClientSetConfig) NewAgentClientSet(stopCh <-chan struct{}) *ClientSet 
 		probeInterval:           cc.ProbeInterval,
 		dialOptions:             cc.DialOptions,
 		serviceAccountTokenPath: cc.ServiceAccountTokenPath,
+		cert:                    cc.Cert,
 		stopCh:                  stopCh,
 	}
 }

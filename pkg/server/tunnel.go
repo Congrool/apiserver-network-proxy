@@ -37,18 +37,20 @@ func (t *Tunnel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil {
 		klog.V(2).InfoS("TLS", "commonName", r.TLS.PeerCertificates[0].Subject.CommonName)
 	}
-	if r.Method != http.MethodConnect {
-		http.Error(w, "this proxy only supports CONNECT passthrough", http.StatusMethodNotAllowed)
-		return
-	}
 
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "hijacking not supported", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
 
+	if r.Method == http.MethodConnect {
+		w.WriteHeader(http.StatusOK)
+	}
+	t.handleProxy(w, r, hijacker)
+}
+
+func (t *Tunnel) handleProxy(w http.ResponseWriter, r *http.Request, hijacker http.Hijacker) {
 	conn, bufrw, err := hijacker.Hijack()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -64,6 +66,7 @@ func (t *Tunnel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Protocol: "tcp",
 				Address:  r.Host,
 				Random:   random,
+				IsTLS:    r.TLS != nil,
 			},
 		},
 	}
